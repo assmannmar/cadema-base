@@ -14,7 +14,7 @@ st.set_page_config(page_title="Cadema - Gestión Inmobiliaria", layout="wide")
 # def get_cookie_manager():
 #     return stx.CookieManager()
 
-cookie_manager = get_cookie_manager()
+# cookie_manager = get_cookie_manager()
 
 # --- LÓGICA DE LOGIN CON COOKIES ---
 def login_user(user):
