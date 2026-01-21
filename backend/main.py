@@ -6,8 +6,8 @@ from typing import List
 import uvicorn
 
 # Importamos lo que creamos antes
-from .database import engine, get_db, Base
-from . import models
+from database import engine, get_db, Base
+import models
 
 # Esto crea las tablas en la base de datos automáticamente
 Base.metadata.create_all(bind=engine)
