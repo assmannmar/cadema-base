@@ -3,3 +3,7 @@
 streamlit
 requests
 pandas
+streamlit
+   requests
+   pandas
+   extra-streamlit-components
