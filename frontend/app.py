@@ -1,104 +1,127 @@
 import streamlit as st
 import requests
 import pandas as pd
+from datetime import datetime
 
 # --- CONFIGURACIÓN ---
-# Reemplaza con tu URL de Render (asegúrate de que no termine en /)
 API_URL = "https://cadema-base.onrender.com"
 
-st.set_page_config(page_title="Gestión Inmobiliaria Cadema", layout="wide")
+st.set_page_config(page_title="Cadema - Gestión Inmobiliaria", layout="wide")
 
-st.title("🏠 Sistema de Gestión Inmobiliaria")
+# Estilos personalizados para los estados
+def color_estado(val):
+    color = '#f1f1f1'
+    if val == "Tasación": color = '#FFE4E1'
+    if val == "Para Publicar": color = '#FFFACD'
+    if val == "Publicado": color = '#E0FFE0'
+    return f'background-color: {color}'
 
-# --- FUNCIONES PARA LA API ---
-def obtener_inmuebles():
-    try:
-        response = requests.get(f"{API_URL}/inmuebles/")
-        if response.status_code == 200:
-            return response.json()
-        return []
-    except Exception as e:
-        st.error(f"Error de conexión: {e}")
-        return []
-
-def guardar_inmueble(direccion, precio):
-    try:
-        # Enviamos los datos como parámetros según definimos en main.py
-        params = {"direccion": direccion, "precio": precio, "estado": "Publicado"}
-        response = requests.post(f"{API_URL}/inmuebles/", params=params)
-        return response.status_code == 200
-    except Exception as e:
-        st.error(f"Error al guardar: {e}")
-        return False
+st.title("🏠 Sistema de Gestión Inmobiliaria Cadema")
 
 # --- LÓGICA DE SESIÓN ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
-    st.session_state['user_role'] = None
 
 if not st.session_state['logged_in']:
-    with st.form("login"):
-        st.subheader("Iniciar Sesión")
+    with st.sidebar:
+        st.subheader("Ingreso al Sistema")
         user = st.text_input("Usuario")
         password = st.text_input("Contraseña", type="password")
-        submit = st.form_submit_button("Entrar")
-        
-        if submit:
-            # Login temporal (Luego lo haremos con la DB de usuarios)
+        if st.button("Entrar"):
             if user == "admin" and password == "1234":
                 st.session_state['logged_in'] = True
-                st.session_state['user_role'] = 'admin'
-                st.rerun()
-            elif user == "agente" and password == "agente123":
-                st.session_state['logged_in'] = True
-                st.session_state['user_role'] = 'agente'
                 st.rerun()
             else:
-                st.error("Credenciales incorrectas")
+                st.error("Error de acceso")
 else:
-    # --- BARRA LATERAL ---
-    st.sidebar.success(f"Conectado como: {st.session_state['user_role'].upper()}")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state['logged_in'] = False
         st.rerun()
 
-    # --- CONTENIDO PRINCIPAL ---
-    tab1, tab2 = st.tabs(["📊 Listado de Propiedades", "➕ Cargar Propiedad"])
+    # --- TABS DE TRABAJO ---
+    tab_lista, tab_tasar, tab_mkt = st.tabs(["📊 Base Inmuebles", "📝 Nueva Tasación", "📢 Marketing"])
 
-    with tab1:
-        st.subheader("Inventario de Inmuebles")
-        datos = obtener_inmuebles()
-        
-        if datos:
-            # Convertimos la lista de la API en una tabla de Pandas
-            df = pd.DataFrame(datos)
-            # Reordenamos o limpiamos columnas si es necesario
-            st.dataframe(df, use_container_width=True)
-            
-            # Botón para refrescar datos
-            if st.button("🔄 Actualizar Tabla"):
+    # --- TAB 1: LISTADO GENERAL ---
+    with tab_lista:
+        st.subheader("Inventario General")
+        try:
+            res = requests.get(f"{API_URL}/inmuebles/")
+            if res.status_code == 200:
+                datos = res.json()
+                if datos:
+                    df = pd.DataFrame(datos)
+                    # Mostrar solo columnas relevantes para el listado
+                    cols = ["id", "estado", "ciudad", "direccion", "tipo_inmueble", "valor_tasacion", "valor_publicacion"]
+                    st.dataframe(df[cols].style.applymap(color_estado, subset=['estado']), use_container_width=True)
+                else:
+                    st.info("No hay datos cargados.")
+        except:
+            st.error("No se pudo conectar con el servidor.")
+
+    # --- TAB 2: NUEVA TASACIÓN (AGENTE) ---
+    with tab_tasar:
+        st.subheader("Registrar Nueva Tasación")
+        with st.form("form_tasacion", clear_on_submit=True):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                ciudad = st.selectbox("Ciudad", ["Campana", "Zarate", "Escobar", "Los Cardales"])
+                segmento = st.selectbox("Segmento", ["Ciudad", "Industria", "Grandes Inmuebles", "Emprendimiento"])
+                emprendimiento = st.text_input("Emprendimiento (si aplica)")
+            with col2:
+                tipo = st.selectbox("Tipo Inmueble", ["Casa", "Departamento", "Lote", "Local", "Galpón"])
+                direccion = st.text_input("Dirección / Nro Lote")
+                drive = st.text_input("Link Carpeta Google Drive (Documentación)")
+            with col3:
+                sup_c = st.number_input("Sup. Cubierta (m2)", min_value=0.0)
+                sup_t = st.number_input("Sup. Terreno (m2)", min_value=0.0)
+                valor_tas = st.number_input("Valor Tasación (USD)", min_value=0.0)
+
+            if st.form_submit_button("Guardar Tasación"):
+                payload = {
+                    "ciudad": ciudad, "segmento": segmento, "emprendimiento": emprendimiento,
+                    "tipo": tipo, "direccion": direccion, "sup_cubierta": sup_c,
+                    "sup_terreno": sup_t, "valor_tasacion": valor_tas, "link_drive": drive
+                }
+                res = requests.post(f"{API_URL}/inmuebles/tasar", params=payload)
+                if res.status_code == 200:
+                    st.success("✅ Tasación registrada. Estado: 'Tasación'")
+                else:
+                    st.error("Error al guardar.")
+
+        st.divider()
+        st.subheader("➡️ Pasar a Publicación")
+        st.write("Selecciona una tasación para autorizar su venta")
+        # Aquí iría la lógica para pasar de 'Tasación' a 'Para Publicar'
+        id_tas = st.number_input("ID del Inmueble", min_value=1, step=1)
+        valor_pub = st.number_input("Valor de Publicación final (USD)", min_value=0.0)
+        if st.button("Autorizar para Publicar"):
+            res = requests.put(f"{API_URL}/inmuebles/{id_tas}/preparar-publicacion", params={"valor_pub": valor_pub})
+            if res.status_code == 200:
+                st.success("Estado actualizado a 'Para Publicar'")
                 st.rerun()
-        else:
-            st.info("No hay inmuebles registrados o la base de datos está vacía.")
 
-    with tab2:
-        if st.session_state['user_role'] in ['admin', 'agente']:
-            st.subheader("Registrar Nuevo Inmueble")
-            with st.form("nueva_prop", clear_on_submit=True):
-                dir_input = st.text_input("Dirección Completa")
-                pre_input = st.number_input("Precio (USD)", min_value=0, step=500)
-                
-                enviar = st.form_submit_button("Guardar Propiedad")
-                
-                if enviar:
-                    if dir_input:
-                        exito = guardar_inmueble(dir_input, pre_input)
-                        if exito:
-                            st.success(f"✅ Inmueble en {dir_input} guardado correctamente.")
-                            # No hace falta rerun aquí porque clear_on_submit limpia el form
-                        else:
-                            st.error("Hubo un problema al guardar en la nube.")
-                    else:
-                        st.warning("La dirección es obligatoria.")
-        else:
-            st.warning("⚠️ Tu rol de 'Visor' no permite cargar nuevas propiedades.")
+    # --- TAB 3: MARKETING (PUBLICACIÓN FINAL) ---
+    with tab_mkt:
+        st.subheader("Pendientes de Publicación")
+        try:
+            res = requests.get(f"{API_URL}/inmuebles/")
+            pendientes = [i for i in res.json() if i['estado'] == "Para Publicar"]
+            
+            if pendientes:
+                for p in pendientes:
+                    with st.expander(f"📌 {p['direccion']} - {p['ciudad']}"):
+                        st.write(f"**Valor a publicar:** USD {p['valor_publicacion']}")
+                        st.write(f"**Drive:** [Ver Documentación]({p['link_drive']})")
+                        link_p = st.text_input("Link del Portal (Tokko/ZonaProp)", key=f"link_{p['id']}")
+                        if st.button("Confirmar Publicación", key=f"btn_{p['id']}"):
+                            if link_p:
+                                res_pub = requests.put(f"{API_URL}/inmuebles/{p['id']}/publicar", params={"link_portal": link_p})
+                                if res_pub.status_code == 200:
+                                    st.success("¡Publicado!")
+                                    st.rerun()
+                            else:
+                                st.warning("Debes poner el link del portal")
+            else:
+                st.info("No hay propiedades pendientes de publicar.")
+        except:
+            st.write("Esperando conexión...")

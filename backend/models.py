@@ -1,6 +1,6 @@
 # Definición de Tablas (Inmuebles y Usuarios)
 
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime
+from sqlalchemy import Column, Integer, String, Float, Date
 from database import Base
 import datetime
 
@@ -8,20 +8,23 @@ class Inmueble(Base):
     __tablename__ = "inmuebles"
     
     id = Column(Integer, primary_key=True, index=True)
-    direccion = Column(String, index=True)
+    estado = Column(String, default="Tasación") # Tasación, Para Publicar, Publicado
     
-    # Etapa actual: 'Tasación', 'Publicado', 'Vendido', 'Baja'
-    estado_actual = Column(String, default="Tasación")
-
-    # --- ETAPA 1: TASACIÓN ---
+    # Datos de la Planilla
+    ciudad = Column(String)
+    segmento = Column(String)
+    emprendimiento = Column(String)
+    tipo_inmueble = Column(String)
+    direccion = Column(String)
+    sup_cubierta = Column(Float)
+    sup_terreno = Column(Float)
+    
+    # Etapa Tasación
     fecha_tasacion = Column(Date, default=datetime.date.today)
-    precio_tasacion = Column(Float)
+    valor_tasacion = Column(Float)
+    link_drive = Column(String) # Carpeta Google Drive
     
-    # --- ETAPA 2: PUBLICACIÓN ---
+    # Etapa Publicación
+    valor_publicacion = Column(Float, nullable=True)
+    link_portal = Column(String, nullable=True) # Link de Tokko/ZonaProp
     fecha_publicacion = Column(Date, nullable=True)
-    precio_publicacion = Column(Float, nullable=True)
-    
-    # --- ETAPA 3: CIERRE (VENTA O BAJA) ---
-    fecha_cierre = Column(Date, nullable=True)
-    precio_venta = Column(Float, nullable=True)
-    motivo_baja = Column(String, nullable=True) # Ejemplo: "Vendido por otro", "Arrepentido"

@@ -1,38 +1,37 @@
 # Rutas de la API y Seguridad
 
-@app.post("/inmuebles/", tags=["Inmuebles"])
-def cargar_inmueble(
-    direccion: str, 
-    precio_tasacion: float, 
-    estado: str = "Tasación",
+@app.post("/inmuebles/tasar", tags=["Flujo Inmobiliario"])
+def tasar_inmueble(
+    ciudad: str, segmento: str, emprendimiento: str, tipo: str,
+    direccion: str, sup_cubierta: float, sup_terreno: float,
+    valor_tasacion: float, link_drive: str,
     db: Session = Depends(get_db)
 ):
     nuevo = models.Inmueble(
-        direccion=direccion, 
-        precio_tasacion=precio_tasacion, 
-        estado_actual=estado,
+        estado="Tasación",
+        ciudad=ciudad, segmento=segmento, emprendimiento=emprendimiento,
+        tipo_inmueble=tipo, direccion=direccion,
+        sup_cubierta=sup_cubierta, sup_terreno=sup_terreno,
+        valor_tasacion=valor_tasacion, link_drive=link_drive,
         fecha_tasacion=datetime.date.today()
     )
     db.add(nuevo)
     db.commit()
-    return {"mensaje": "Inmueble registrado en etapa de Tasación"}
+    return {"mensaje": "Tasación registrada con éxito"}
 
-# Nuevo endpoint para actualizar la etapa (Ej: de Tasación a Publicado)
-@app.put("/inmuebles/{id}/avanzar", tags=["Inmuebles"])
-def avanzar_etapa(id: int, nuevo_estado: str, precio: float, db: Session = Depends(get_db)):
+@app.put("/inmuebles/{id}/preparar-publicacion")
+def preparar_publicacion(id: int, valor_pub: float, db: Session = Depends(get_db)):
     inmueble = db.query(models.Inmueble).filter(models.Inmueble.id == id).first()
-    if not inmueble:
-        raise HTTPException(status_code=404, detail="Inmueble no encontrado")
-    
-    inmueble.estado_actual = nuevo_estado
-    hoy = datetime.date.today()
-
-    if nuevo_estado == "Publicado":
-        inmueble.fecha_publicacion = hoy
-        inmueble.precio_publicacion = precio
-    elif nuevo_estado == "Vendido":
-        inmueble.fecha_cierre = hoy
-        inmueble.precio_venta = precio
-    
+    inmueble.estado = "Para Publicar"
+    inmueble.valor_publicacion = valor_pub
     db.commit()
-    return {"mensaje": f"Inmueble actualizado a {nuevo_estado}"}
+    return {"mensaje": "Estado actualizado: Para Publicar"}
+
+@app.put("/inmuebles/{id}/publicar")
+def completar_publicacion(id: int, link_portal: str, db: Session = Depends(get_db)):
+    inmueble = db.query(models.Inmueble).filter(models.Inmueble.id == id).first()
+    inmueble.estado = "Publicado"
+    inmueble.link_portal = link_portal
+    inmueble.fecha_publicacion = datetime.date.today()
+    db.commit()
+    return {"mensaje": "Inmueble publicado oficialmente"}
