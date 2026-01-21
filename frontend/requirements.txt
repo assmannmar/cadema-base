@@ -1,0 +1,5 @@
+# Librerías que necesita el frontend
+
+streamlit
+requests
+pandas
