@@ -9,12 +9,8 @@ API_URL = "https://cadema-base.onrender.com"
 
 st.set_page_config(page_title="Cadema - Gestión Inmobiliaria", layout="wide")
 
-# Inicializar manejador de cookies
-# @st.cache_resource
-# def get_cookie_manager():
-#     return stx.CookieManager()
-
-# cookie_manager = get_cookie_manager()
+# Inicializar manejador de cookies (SIN @st.cache_resource)
+cookie_manager = stx.CookieManager()
 
 # --- LÓGICA DE LOGIN CON COOKIES ---
 def login_user(user):
@@ -79,6 +75,7 @@ else:
             with col1:
                 ciudad = st.selectbox("Ciudad", ["Campana", "Zarate", "Escobar", "Los Cardales"])
                 segmento = st.selectbox("Segmento", ["Ciudad", "Industria", "Emprendimiento"])
+                emprendimiento = st.text_input("Emprendimiento")
                 direccion = st.text_input("Dirección / Nro Lote")
                 tipo = st.selectbox("Tipo", ["Casa", "Departamento", "Lote", "Local"])
             with col2:
@@ -89,8 +86,8 @@ else:
             
             if st.form_submit_button("Guardar Tasación"):
                 payload = {
-                    "ciudad": ciudad, "segmento": segmento, "tipo": tipo,
-                    "direccion": direccion, "sup_cubierta": sup_c,
+                    "ciudad": ciudad, "segmento": segmento, "emprendimiento": emprendimiento,
+                    "tipo": tipo, "direccion": direccion, "sup_cubierta": sup_c,
                     "sup_terreno": sup_t, "valor_tasacion": valor_tas, "link_drive": drive
                 }
                 res = requests.post(f"{API_URL}/inmuebles/tasar", params=payload)
