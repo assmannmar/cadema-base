@@ -1,14 +1,37 @@
-# Aplicación de Streamlit (Login y Tablas)
-
 import streamlit as st
 import requests
 import pandas as pd
 
-st.set_page_config(page_title="Gestión Inmobiliaria", layout="wide")
+# --- CONFIGURACIÓN ---
+# Reemplaza con tu URL de Render (asegúrate de que no termine en /)
+API_URL = "https://cadema-base.onrender.com"
+
+st.set_page_config(page_title="Gestión Inmobiliaria Cadema", layout="wide")
 
 st.title("🏠 Sistema de Gestión Inmobiliaria")
 
-# --- SIMULACIÓN DE LOGIN (Luego lo conectaremos a la API) ---
+# --- FUNCIONES PARA LA API ---
+def obtener_inmuebles():
+    try:
+        response = requests.get(f"{API_URL}/inmuebles/")
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except Exception as e:
+        st.error(f"Error de conexión: {e}")
+        return []
+
+def guardar_inmueble(direccion, precio):
+    try:
+        # Enviamos los datos como parámetros según definimos en main.py
+        params = {"direccion": direccion, "precio": precio, "estado": "Publicado"}
+        response = requests.post(f"{API_URL}/inmuebles/", params=params)
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error al guardar: {e}")
+        return False
+
+# --- LÓGICA DE SESIÓN ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -21,32 +44,61 @@ if not st.session_state['logged_in']:
         submit = st.form_submit_button("Entrar")
         
         if submit:
-            # Por ahora, un login de prueba
+            # Login temporal (Luego lo haremos con la DB de usuarios)
             if user == "admin" and password == "1234":
                 st.session_state['logged_in'] = True
                 st.session_state['user_role'] = 'admin'
                 st.rerun()
+            elif user == "agente" and password == "agente123":
+                st.session_state['logged_in'] = True
+                st.session_state['user_role'] = 'agente'
+                st.rerun()
             else:
                 st.error("Credenciales incorrectas")
 else:
-    st.sidebar.success(f"Conectado como: {st.session_state['user_role']}")
+    # --- BARRA LATERAL ---
+    st.sidebar.success(f"Conectado como: {st.session_state['user_role'].upper()}")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state['logged_in'] = False
         st.rerun()
 
-    # --- CONTENIDO SEGÚN ROL ---
-    tab1, tab2 = st.tabs(["Listado", "Cargar Propiedad"])
+    # --- CONTENIDO PRINCIPAL ---
+    tab1, tab2 = st.tabs(["📊 Listado de Propiedades", "➕ Cargar Propiedad"])
 
     with tab1:
-        st.write("Aquí verás la tabla de Excel convertida a Sistema.")
-        # Aquí pediremos los datos a la API de FastAPI
+        st.subheader("Inventario de Inmuebles")
+        datos = obtener_inmuebles()
+        
+        if datos:
+            # Convertimos la lista de la API en una tabla de Pandas
+            df = pd.DataFrame(datos)
+            # Reordenamos o limpiamos columnas si es necesario
+            st.dataframe(df, use_container_width=True)
+            
+            # Botón para refrescar datos
+            if st.button("🔄 Actualizar Tabla"):
+                st.rerun()
+        else:
+            st.info("No hay inmuebles registrados o la base de datos está vacía.")
 
     with tab2:
-        if st.session_state['user_role'] == 'admin' or st.session_state['user_role'] == 'agente':
-            st.subheader("Cargar nuevo inmueble")
-            with st.form("nueva_prop"):
-                dir = st.text_input("Dirección")
-                pre = st.number_input("Precio", min_value=0)
-                btn = st.form_submit_button("Guardar")
+        if st.session_state['user_role'] in ['admin', 'agente']:
+            st.subheader("Registrar Nuevo Inmueble")
+            with st.form("nueva_prop", clear_on_submit=True):
+                dir_input = st.text_input("Dirección Completa")
+                pre_input = st.number_input("Precio (USD)", min_value=0, step=500)
+                
+                enviar = st.form_submit_button("Guardar Propiedad")
+                
+                if enviar:
+                    if dir_input:
+                        exito = guardar_inmueble(dir_input, pre_input)
+                        if exito:
+                            st.success(f"✅ Inmueble en {dir_input} guardado correctamente.")
+                            # No hace falta rerun aquí porque clear_on_submit limpia el form
+                        else:
+                            st.error("Hubo un problema al guardar en la nube.")
+                    else:
+                        st.warning("La dirección es obligatoria.")
         else:
-            st.warning("No tienes permisos para cargar propiedades. Solo lectura.")
+            st.warning("⚠️ Tu rol de 'Visor' no permite cargar nuevas propiedades.")
