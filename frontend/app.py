@@ -10,9 +10,9 @@ API_URL = "https://cadema-base.onrender.com"
 st.set_page_config(page_title="Cadema - Gestión Inmobiliaria", layout="wide")
 
 # Inicializar manejador de cookies
-@st.cache_resource
-def get_cookie_manager():
-    return stx.CookieManager()
+# @st.cache_resource
+# def get_cookie_manager():
+#     return stx.CookieManager()
 
 cookie_manager = get_cookie_manager()
 
