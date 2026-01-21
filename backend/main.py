@@ -1,44 +1,38 @@
 # Rutas de la API y Seguridad
 
-from fastapi import FastAPI, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
-import uvicorn
-
-# Importamos lo que creamos antes
-from database import engine, get_db, Base
-import models
-
-# Esto crea las tablas en la base de datos automáticamente
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="Sistema Inmobiliario API")
-
-@app.get("/")
-def home():
-    return {"mensaje": "API Inmobiliaria Funcionando"}
-
-# --- LÓGICA DE USUARIOS Y ROLES (Básico) ---
-
-@app.post("/usuarios/", tags=["Usuarios"])
-def crear_usuario(email: str, clave: str, rol: str, db: Session = Depends(get_db)):
-    # Aquí luego agregaremos encriptación real, por ahora es para probar
-    nuevo_usuario = models.User(email=email, hashed_password=clave, role=rol)
-    db.add(nuevo_usuario)
-    db.commit()
-    db.refresh(nuevo_usuario)
-    return {"mensaje": "Usuario creado con éxito", "usuario": nuevo_usuario.email}
-
-# --- LÓGICA DE INMUEBLES ---
-
-@app.get("/inmuebles/", tags=["Inmuebles"])
-def listar_inmuebles(db: Session = Depends(get_db)):
-    return db.query(models.Inmueble).all()
-
 @app.post("/inmuebles/", tags=["Inmuebles"])
-def cargar_inmueble(direccion: str, precio: float, estado: str, db: Session = Depends(get_db)):
-    # Aquí podrías validar: si el usuario no es 'admin' o 'agente', no dejarlo pasar
-    nuevo = models.Inmueble(direccion=direccion, precio=precio, estado=estado)
+def cargar_inmueble(
+    direccion: str, 
+    precio_tasacion: float, 
+    estado: str = "Tasación",
+    db: Session = Depends(get_db)
+):
+    nuevo = models.Inmueble(
+        direccion=direccion, 
+        precio_tasacion=precio_tasacion, 
+        estado_actual=estado,
+        fecha_tasacion=datetime.date.today()
+    )
     db.add(nuevo)
     db.commit()
-    return {"mensaje": "Inmueble cargado"}
+    return {"mensaje": "Inmueble registrado en etapa de Tasación"}
+
+# Nuevo endpoint para actualizar la etapa (Ej: de Tasación a Publicado)
+@app.put("/inmuebles/{id}/avanzar", tags=["Inmuebles"])
+def avanzar_etapa(id: int, nuevo_estado: str, precio: float, db: Session = Depends(get_db)):
+    inmueble = db.query(models.Inmueble).filter(models.Inmueble.id == id).first()
+    if not inmueble:
+        raise HTTPException(status_code=404, detail="Inmueble no encontrado")
+    
+    inmueble.estado_actual = nuevo_estado
+    hoy = datetime.date.today()
+
+    if nuevo_estado == "Publicado":
+        inmueble.fecha_publicacion = hoy
+        inmueble.precio_publicacion = precio
+    elif nuevo_estado == "Vendido":
+        inmueble.fecha_cierre = hoy
+        inmueble.precio_venta = precio
+    
+    db.commit()
+    return {"mensaje": f"Inmueble actualizado a {nuevo_estado}"}
