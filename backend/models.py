@@ -1,7 +1,7 @@
 # Definición de Tablas (Inmuebles y Usuarios)
 
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
-from .database import Base
+from database import Base
 
 class User(Base):
     __tablename__ = "usuarios"
