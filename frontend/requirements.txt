@@ -1,9 +1,7 @@
-# Librerías que necesita el frontend
+# Librerías del frontend - Streamlit
 
-streamlit
-requests
-pandas
-streamlit
-   requests
-   pandas
-   extra-streamlit-components
+streamlit==1.31.0
+requests==2.31.0
+pandas==2.2.0
+extra-streamlit-components==0.1.60
+python-dotenv==1.0.0

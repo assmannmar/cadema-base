@@ -1,9 +1,20 @@
-# Librerías que necesita el backend
+# Librerías del backend - FastAPI
 
-fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
-passlib[bcrypt]
-python-jose[cryptography]
-python-multipart
+# Framework principal
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# Base de datos
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# Seguridad y autenticación
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.6
+
+# Validación de datos
+pydantic==2.5.3
+
+# Utilidades
+python-dotenv==1.0.0
