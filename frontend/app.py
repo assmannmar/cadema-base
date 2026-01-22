@@ -56,16 +56,15 @@ else:
     with tab_lista:
         st.subheader("Inventario General")
         try:
-            res = requests.get(f"{API_URL}/inmuebles/")
-            if res.status_code == 200:
-                datos = res.json()
-                if datos:
-                    df = pd.DataFrame(datos)
-                    st.dataframe(df, use_container_width=True)
-                else:
-                    st.info("No hay datos en la nube.")
-        except:
-            st.error("Error conectando al backend de Render.")
+            res = requests.get(f"{API_URL}/inmuebles/", timeout=10)
+            res.raise_for_status()
+            datos = res.json()
+        except requests.exceptions.Timeout:
+            st.error("⏱️ El servidor tardó demasiado en responder")
+        except requests.exceptions.ConnectionError:
+            st.error("🔌 No se pudo conectar al servidor")
+        except requests.exceptions.HTTPError as e:
+            st.error(f"❌ Error del servidor: {e.response.status_code}")
 
     # --- TAB 2: REGISTRO DE TASACIÓN ---
     with tab_tasar:
